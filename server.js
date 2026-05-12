@@ -23,7 +23,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'vccong2710gmail.com', // Email dùng để gửi đi
-        pass: 'qqbn kijf qgtq ktvn'      // Mật khẩu ứng dụng (App Password)
+        pass: 'qqbnkijfqgtqktvn'      // Mật khẩu ứng dụng (App Password)
     }
 });
 
