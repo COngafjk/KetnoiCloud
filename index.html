@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Giám Sát IoT Pro</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary-color: #2563eb;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); margin: 0; padding: 20px; color: #333; }
+        h1 { color: #1e293b; margin-bottom: 30px; }
+        
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        
+        .card { background: var(--card-bg); padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.3s ease; text-align: center; }
+        .card h3 { margin-top: 0; color: #64748b; font-size: 1rem; }
+        .value { font-size: 2.5rem; font-weight: bold; margin: 10px 0; }
+        
+        /* Cải tiến trực quan cho Gas */
+        .gas-meter { height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; margin: 10px 0; }
+        #gasProgress { height: 100%; width: 0%; background: var(--success); transition: width 0.5s ease; }
+        
+        /* Đồ thị */
+        .chart-container { background: white; margin: 20px auto; padding: 20px; border-radius: 15px; max-width: 1200px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+
+        /* Cài đặt */
+        .settings { background: #1e293b; color: white; padding: 25px; border-radius: 15px; max-width: 1200px; margin: 20px auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; align-items: center; }
+        .settings input { padding: 10px; border-radius: 8px; border: none; width: 100px; font-size: 1rem; }
+        .settings button { padding: 10px 25px; background: var(--primary-color); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        .settings button:hover { background: #1d4ed8; }
+
+        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; margin-top: 5px; }
+        .alert-active { animation: pulse 1s infinite; background: var(--danger) !important; color: white; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <center>
+        <h1>TRẠM GIÁM SÁT MÔI TRƯỜNG TOÀN DIỆN</h1>
+    </center>
+
+    <div class="dashboard">
+        <!-- Card Nhiệt Độ -->
+        <div class="card" id="tempCard">
+            <h3>Nhiệt Độ</h3>
+            <div class="value"><span id="temp">--</span>°C</div>
+            <div id="tempStatus" class="status-badge">Ổn định</div>
+        </div>
+
+        <!-- Card Độ Ẩm -->
+        <div class="card">
+            <h3>Độ Ẩm</h3>
+            <div class="value"><span id="humi">--</span>%</div>
+            <div class="status-badge" style="background: #dbeafe; color: #1e40af;">Bình thường</div>
+        </div>
+
+        <!-- Card Khí Gas Trực Quan -->
+        <div class="card" id="gasCard">
+            <h3>Khí Gas (Nồng độ)</h3>
+            <div class="value" id="gas">--</div>
+            <div class="gas-meter"><div id="gasProgress"></div></div>
+            <div id="gasStatus" class="status-badge">Sạch</div>
+        </div>
+    </div>
+
+    <!-- Biểu đồ thời gian thực -->
+    <div class="chart-container">
+        <canvas id="iotChart"></canvas>
+    </div>
+
+    <!-- Phần cài đặt -->
+    <div class="settings">
+        <div>
+            Ngưỡng Nhiệt độ: <input type="number" id="setTemp" step="0.1">
+        </div>
+        <div>
+            Ngưỡng Khí Gas: <input type="number" id="setGas">
+        </div>
+        <button onclick="saveSettings()">LƯU CÀI ĐẶT</button>
+        <div id="configDisplay" style="font-size: 0.9rem; opacity: 0.8;"> Đang tải cấu hình...</div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        // Cấu hình Biểu đồ Chart.js
+        const ctx = document.getElementById('iotChart').getContext('2d');
+        const iotChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Thời gian
+                datasets: [
+                    { label: 'Nhiệt độ (°C)', data: [], borderColor: '#ef4444', tension: 0.3, yAxisID: 'y' },
+                    { label: 'Khí Gas', data: [], borderColor: '#f59e0b', tension: 0.3, yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { type: 'linear', display: true, position: 'left', title: {display: true, text: 'Nhiệt độ'} },
+                    y1: { type: 'linear', display: true, position: 'right', grid: {drawOnChartArea: false}, title: {display: true, text: 'Chỉ số Gas'} }
+                }
+            }
+        });
+
+        // Nhận dữ liệu từ Server
+        socket.on('sensor_data', (data) => {
+            // Cập nhật số liệu
+            document.getElementById('temp').innerText = data.nhiet_do;
+            document.getElementById('humi').innerText = data.do_am;
+            document.getElementById('gas').innerText = data.khi_gas;
+
+            // Xử lý trực quan cho Gas (Giả định max là 4095)
+            const gasPercent = (data.khi_gas / 4095) * 100;
+            const gasBar = document.getElementById('gasProgress');
+            gasBar.style.width = gasPercent + "%";
+
+            // Đổi màu dựa trên mức độ nguy hiểm
+            const gasStatus = document.getElementById('gasStatus');
+            const gasCard = document.getElementById('gasCard');
+            if(data.khi_gas > 2000) {
+                gasBar.style.backgroundColor = "#ef4444";
+                gasStatus.innerText = "NGUY HIỂM";
+                gasStatus.className = "status-badge alert-active";
+                gasCard.style.border = "2px solid #ef4444";
+            } else if(data.khi_gas > 800) {
+                gasBar.style.backgroundColor = "#f59e0b";
+                gasStatus.innerText = "CẢNH BÁO";
+                gasStatus.className = "status-badge";
+                gasStatus.style.background = "#fef3c7";
+                gasCard.style.border = "none";
+            } else {
+                gasBar.style.backgroundColor = "#10b981";
+                gasStatus.innerText = "SẠCH";
+                gasStatus.className = "status-badge";
+                gasStatus.style.background = "#d1fae5";
+                gasCard.style.border = "none";
+            }
+
+            // Cập nhật biểu đồ (Giới hạn 20 điểm dữ liệu)
+            const now = new Date().toLocaleTimeString();
+            iotChart.data.labels.push(now);
+            iotChart.data.datasets[0].data.push(data.nhiet_do);
+            iotChart.data.datasets[1].data.push(data.khi_gas);
+            
+            if(iotChart.data.labels.length > 20) {
+                iotChart.data.labels.shift();
+                iotChart.data.datasets[0].data.shift();
+                iotChart.data.datasets[1].data.shift();
+            }
+            iotChart.update();
+        });
+
+        // Nhận cấu hình từ Server
+        socket.on('current_config', (config) => {
+            document.getElementById('setTemp').value = config.tempThreshold;
+            document.getElementById('setGas').value = config.gasThreshold;
+            document.getElementById('configDisplay').innerText = `Ngưỡng hiện tại: Nhiệt độ > ${config.tempThreshold}°C | Gas > ${config.gasThreshold}`;
+        });
+
+        function saveSettings() {
+            const t = document.getElementById('setTemp').value;
+            const g = document.getElementById('setGas').value;
+            socket.emit('set_threshold', { temp: t, gas: g });
+            alert("Đã gửi yêu cầu lưu cài đặt!");
+        }
+    </script>
+</body>
+</html>
