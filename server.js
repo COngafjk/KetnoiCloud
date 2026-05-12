@@ -16,12 +16,18 @@ let config = {
     gasThreshold: 2000
 };
 
-// --- CẤU HÌNH GỬI EMAIL ---
+// --- CẤU HÌNH GỬI EMAIL (ĐÃ SỬA ĐỂ CHẠY TRÊN RENDER) ---
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // Sử dụng STARTTLS cho cổng 587
     auth: {
-        user: 'vccong2710@gmail.com', // ĐÃ SỬA: Thêm ký tự @
-        pass: 'qqbnkijfqgtqktvn'      // Mật khẩu ứng dụng (App Password)
+        user: 'vccong2710@gmail.com',
+        pass: 'qqbnkijfqgtqktvn' 
+    },
+    tls: {
+        // Hỗ trợ kết nối từ môi trường Cloud (không bị lỗi chứng chỉ)
+        rejectUnauthorized: false 
     }
 });
 
@@ -30,22 +36,24 @@ const EMAIL_INTERVAL = 300000; // 5 phút gửi 1 lần
 
 function sendAlertEmail(data) {
     const now = Date.now();
-    if (now - lastEmailSentTime < EMAIL_INTERVAL) return;
+    if (now - lastEmailSentTime < EMAIL_INTERVAL) {
+        console.log("⏳ Vừa gửi email cách đây chưa lâu, vui lòng đợi thêm...");
+        return;
+    }
 
     const mailOptions = {
-        // ĐÃ SỬA: Để 'from' khớp với tài khoản gửi
         from: '"Hệ Thống IoT Cảnh Báo" <vccong2710@gmail.com>', 
-        to: 'vccong2710@gmail.com', // ĐÃ SỬA: Gửi cho chính bạn để kiểm tra
+        to: 'vccong2710@gmail.com', 
         subject: '⚠️ CẢNH BÁO: Phát hiện chỉ số vượt ngưỡng!',
         html: `
             <div style="font-family: Arial, sans-serif; border: 2px solid #ff0000; padding: 20px; border-radius: 10px;">
                 <h2 style="color: #ff0000; text-align: center;">⚠️ CẢNH BÁO NGUY HIỂM</h2>
-                <p>Hệ thống tại trạm giám sát vừa ghi nhận các chỉ số vượt mức an toàn:</p>
+                <p>Hệ thống giám sát ghi nhận thông số bất thường:</p>
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr style="background-color: #f8d7da;">
-                        <th style="padding: 10px; border: 1px solid #dee2e6;">Thông số</th>
-                        <th style="padding: 10px; border: 1px solid #dee2e6;">Giá trị</th>
-                        <th style="padding: 10px; border: 1px solid #dee2e6;">Ngưỡng</th>
+                        <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">Thông số</th>
+                        <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">Giá trị</th>
+                        <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">Ngưỡng</th>
                     </tr>
                     <tr>
                         <td style="padding: 10px; border: 1px solid #dee2e6;">Nhiệt độ</td>
@@ -58,22 +66,23 @@ function sendAlertEmail(data) {
                         <td style="padding: 10px; border: 1px solid #dee2e6;">${config.gasThreshold}</td>
                     </tr>
                 </table>
-                <p style="margin-top: 20px;">Vui lòng truy cập <a href="https://ketnoicloud.onrender.com" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Bảng điều khiển</a> để xử lý.</p>
+                <p style="margin-top: 20px;">Kiểm tra chi tiết tại: <a href="https://ketnoicloud.onrender.com">Bảng điều khiển</a></p>
             </div>
         `
     };
 
+    console.log("📨 Đang tiến hành gửi email...");
     transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
-            console.log("❌ Lỗi gửi Email:", error);
+            console.log("❌ Lỗi gửi Email:", error.message);
         } else {
-            console.log("✅ Email cảnh báo đã được gửi thành công đến vccong2710@gmail.com!");
+            console.log("✅ Email đã gửi thành công!");
             lastEmailSentTime = now;
         }
     });
 }
 
-// --- CÁC ROUTE CÒN LẠI GIỮ NGUYÊN ---
+// --- CÁC ROUTE ---
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -86,12 +95,13 @@ app.post('/update', (req, res) => {
     const data = req.body;
     console.log(`\n--- DỮ LIỆU: Temp: ${data.nhiet_do} | Gas: ${data.khi_gas} | Cảnh báo: ${data.canh_bao}`);
     
+    // Kiểm tra đúng kiểu dữ liệu (boolean hoặc string "true")
     if (data.canh_bao === true || data.canh_bao === "true") {
         sendAlertEmail(data);
     }
 
     io.emit('sensor_data', data); 
-    res.status(200).send("Server da nhan du lieu");
+    res.status(200).send("OK");
 });
 
 io.on('connection', (socket) => {
