@@ -2,63 +2,56 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Lịch Sử Hệ Thống IoT</title>
+    <title>Lịch sử hệ thống IoT</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f7f6; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-        th { background-color: #4CAF50; color: white; }
+        th { background-color: #2563eb; color: white; }
         tr:nth-child(even) { background-color: #f2f2f2; }
-        .alert { background-color: #ffcccc !important; color: red; font-weight: bold; }
-        .back-btn { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #2196F3; font-weight: bold; }
+        .btn-back { padding: 10px 15px; background: #333; color: white; text-decoration: none; border-radius: 5px; }
+        .alert { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="/" class="back-btn">← Quay lại Bảng điều khiển</a>
-        <h2>Lịch Sử Dữ Liệu Cảm Biến</h2>
+        <a href="/" class="btn-back">← Quay lại trang chủ</a>
+        <h2>NHẬT KÝ DỮ LIỆU HỆ THỐNG</h2>
+        <button onclick="loadLogs()" style="padding: 10px; cursor: pointer;">Làm mới dữ liệu</button>
+        
         <table>
             <thead>
                 <tr>
-                    <th>Thời Gian (Việt Nam)</th>
-                    <th>Nhiệt Độ (°C)</th>
-                    <th>Độ Ẩm (%)</th>
+                    <th>Thời gian</th>
+                    <th>Nhiệt độ (°C)</th>
+                    <th>Độ ẩm (%)</th>
                     <th>Khí Gas</th>
-                    <th>Trạng Thái</th>
+                    <th>Trạng thái</th>
                 </tr>
             </thead>
-            <tbody id="logTable">
+            <tbody id="logTableBody">
                 <!-- Dữ liệu sẽ đổ vào đây -->
             </tbody>
         </table>
     </div>
 
     <script>
-        async function loadHistory() {
+        async function loadLogs() {
             const response = await fetch('/history');
             const data = await response.json();
-            const tableBody = document.getElementById('logTable');
-
-            data.forEach(log => {
-                const row = document.createElement('tr');
-                if (log.canh_bao) row.classList.add('alert');
-
-                // Chuyển đổi giờ sang giờ Việt Nam
-                const time = new Date(log.thoi_gian).toLocaleString('vi-VN');
-
-                row.innerHTML = `
-                    <td>${time}</td>
+            const tbody = document.getElementById('logTableBody');
+            tbody.innerHTML = data.map(log => `
+                <tr>
+                    <td>${new Date(log.thoi_gian).toLocaleString()}</td>
                     <td>${log.nhiet_do}</td>
                     <td>${log.do_am}</td>
                     <td>${log.khi_gas}</td>
-                    <td>${log.canh_bao ? 'NGUY HIỂM' : 'An toàn'}</td>
-                `;
-                tableBody.appendChild(row);
-            });
+                    <td class="${log.canh_bao ? 'alert' : ''}">${log.canh_bao ? 'CẢNH BÁO' : 'Bình thường'}</td>
+                </tr>
+            `).join('');
         }
-        loadHistory();
+        loadLogs(); // Chạy ngay khi mở trang
     </script>
 </body>
 </html>
