@@ -14,7 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // --- CẤU HÌNH DATABASE (MONGODB ATLAS) ---
 // Ghi chú: Thay 'MK_CUA_BAN' bằng mật khẩu bạn vừa tạo ở bước Database Access
-const mongoURI = "mongodb+srv://admin:VCC123456@cluster0.yaz7fki.mongodb.net/TramGiamSatIOT?retryWrites=true&w=majority";
+const mongoURI = "mongodb+srv://admin:VCC12345@cluster0.yaz7fki.mongodb.net/TramGiamSatIOT?retryWrites=true&w=majority";
 
 mongoose.connect(mongoURI)
     .then(() => console.log("🚀 Đã kết nối thành công với MongoDB Atlas!"))
