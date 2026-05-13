@@ -10,6 +10,7 @@ const io = new Server(server);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname))); // Cho phép truy cập các file tĩnh (html, css, js)
 
 // --- 1. CẤU HÌNH DATABASE ---
 const mongoURI = "mongodb+srv://admin:VCC12345@cluster0.yaz7fki.mongodb.net/TramGiamSatIOT?retryWrites=true&w=majority";
@@ -26,73 +27,99 @@ const sensorSchema = new mongoose.Schema({
 });
 const SensorLog = mongoose.model('SensorLog', sensorSchema);
 
-// --- 2. CẤU HÌNH HỆ THỐNG (THÊM ĐIỀU KHIỂN) ---
+// --- 2. CẤU HÌNH HỆ THỐNG ---
 let config = {
     tempThreshold: 35.0,
     gasThreshold: 2000,
-    buzzerEnabled: true,  // Trạng thái bật/tắt còi
-    ledEnabled: true      // Trạng thái bật/tắt LED
+    buzzerEnabled: true,  
+    ledEnabled: true      
 };
 
 // --- 3. ĐIỀU HƯỚNG GIAO DIỆN ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/view-history', (req, res) => res.sendFile(path.join(__dirname, 'history.html')));
 
-// API lấy lịch sử cho giao diện Log
+// API lấy lịch sử (giới hạn 100 bản ghi mới nhất)
 app.get('/history', async (req, res) => {
     try {
         const logs = await SensorLog.find().sort({ thoi_gian: -1 }).limit(100);
         res.json(logs);
     } catch (err) {
-        res.status(500).json({ error: "Lỗi lấy dữ liệu" });
+        res.status(500).json({ error: "Lỗi lấy dữ liệu từ database" });
     }
 });
 
-// ESP32 gọi cái này để biết có được hú còi hay bật LED không
-app.get('/get-config', (req, res) => res.json(config));
+// ESP32 gọi cái này để lấy cấu hình (Threshold và trạng thái On/Off thiết bị)
+app.get('/get-config', (req, res) => {
+    res.json(config);
+});
 
 // --- 4. XỬ LÝ DỮ LIỆU TỪ ESP32 ---
 app.post('/update', async (req, res) => {
     const data = req.body;
-    console.log(`📥 [INCOMING] T: ${data.nhiet_do} | G: ${data.khi_gas} | Alert: ${data.canh_bao}`);
+    
+    // Log dữ liệu nhận được để kiểm tra trên console của Render/CMD
+    console.log(`📥 [DATA] Temp: ${data.nhiet_do}°C | Gas: ${data.khi_gas} | Alert: ${data.canh_bao}`);
 
     try {
-        const isAlertStatus = (data.canh_bao === true || data.canh_bao === "true");
+        // Đảm bảo kiểu dữ liệu boolean cho cảnh báo
+        const isAlertStatus = String(data.canh_bao) === "true";
+        
         const newLog = new SensorLog({
             nhiet_do: data.nhiet_do,
             do_am: data.do_am,
             khi_gas: data.khi_gas,
             canh_bao: isAlertStatus
         });
+        
         await newLog.save();
+        
+        // Gửi dữ liệu real-time tới giao diện Web
+        io.emit('sensor_data', {
+            ...data,
+            canh_bao: isAlertStatus,
+            thoi_gian: new Date()
+        });
+        
+        res.status(200).send("Update Successful");
     } catch (dbErr) {
         console.error("❌ [DB ERROR]:", dbErr.message);
+        res.status(500).send("Database Error");
     }
-
-    io.emit('sensor_data', data); 
-    res.status(200).send("OK");
 });
 
 // --- 5. GIAO TIẾP REAL-TIME (SOCKET.IO) ---
 io.on('connection', (socket) => {
+    console.log(`🔌 [Web] New client connected: ${socket.id}`);
+    
+    // Gửi cấu hình hiện tại ngay khi Web vừa mở
     socket.emit('current_config', config);
 
-    // Lắng nghe lệnh từ giao diện Web
+    // Lắng nghe lệnh cập nhật từ giao diện Web (Nút Lưu hoặc Toggle On/Off)
     socket.on('update_settings', (newSettings) => {
-        // Cập nhật ngưỡng và trạng thái thiết bị
         config.tempThreshold = parseFloat(newSettings.temp) || config.tempThreshold;
         config.gasThreshold = parseInt(newSettings.gas) || config.gasThreshold;
-        config.buzzerEnabled = newSettings.buzzer;
-        config.ledEnabled = newSettings.led;
-
-        console.log(`⚙️ [CONFIG] New Settings: Buzzer=${config.buzzerEnabled}, LED=${config.ledEnabled}`);
         
-        // Gửi lại cho tất cả các máy khách khác
+        // Cập nhật trạng thái cho phép thiết bị hoạt động
+        if (newSettings.buzzer !== undefined) config.buzzerEnabled = newSettings.buzzer;
+        if (newSettings.led !== undefined) config.ledEnabled = newSettings.led;
+
+        console.log(`⚙️ [CONFIG] Updated: T_Thresh=${config.tempThreshold}, G_Thresh=${config.gasThreshold}, Buzzer=${config.buzzerEnabled}, LED=${config.ledEnabled}`);
+        
+        // Phát tán cấu hình mới tới TẤT CẢ các tab web đang mở để đồng bộ giao diện
         io.emit('current_config', config);
+    });
+
+    socket.on('disconnect', () => {
+        console.log(`❌ [Web] Client disconnected`);
     });
 });
 
+// --- 6. KHỞI CHẠY SERVER ---
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 SERVER RUNNING AT PORT: ${PORT}`);
+    console.log("-----------------------------------------");
+    console.log(`🚀 SERVER IS ONLINE AT PORT: ${PORT}`);
+    console.log(`🏠 Local Access: http://localhost:${PORT}`);
+    console.log("-----------------------------------------");
 });
