@@ -95,12 +95,19 @@ app.post('/update', async (req, res) => {
         await newLog.save();
 
         // --- THÊM MỚI: TỰ ĐỘNG GỬI TELEGRAM KHI CÓ CẢNH BÁO ---
+
         if (isAlertStatus) {
+            // LƯU Ý: Thay 'ketnoicloud.onrender.com' bằng link thực tế của bạn trên Render
+            const baseUrl = `https://ketnoicloud.onrender.com`; 
+
             const msg = `🚨 <b>CẢNH BÁO HỆ THỐNG IOT</b> 🚨\n\n` +
                         `🌡 Nhiệt độ: <b>${data.nhiet_do}°C</b>\n` +
                         `💧 Độ ẩm: <b>${data.do_am}%</b>\n` +
                         `🔥 Khí Gas: <b>${data.khi_gas}</b>\n` +
-                        `⏰ Thời gian: ${new Date().toLocaleString('vi-VN')}`;
+                        `⏰ Thời gian: ${new Date().toLocaleString('vi-VN')}\n\n` +
+                        `👉 <a href="${baseUrl}">Mở Bảng Điều Khiển</a>\n` +
+                        `📜 <a href="${baseUrl}/view-history">Xem Nhật Ký Chi Tiết</a>`;
+            
             sendTelegramAlert(msg);
         }
         
