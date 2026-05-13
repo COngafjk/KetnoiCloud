@@ -16,7 +16,7 @@ app.use(express.static(path.join(__dirname))); // Cho phép truy cập các file
 // --- THÊM MỚI: CẤU HÌNH TELEGRAM ---
 // Hãy thay Token và Chat ID thật của bạn vào đây
 const TELEGRAM_TOKEN = '8660866539:AAGc-VrsDHMp0VoPseCxSlWbavDbNPMpzHo'; 
-const TELEGRAM_CHAT_ID = '8660866539'; 
+const TELEGRAM_CHAT_ID = '8812456715'; 
 
 async function sendTelegramAlert(message) {
     const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
