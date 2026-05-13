@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const nodemailer = require('nodemailer'); 
-const mongoose = require('mongoose'); 
+const mongoose = require('mongoose'); // THÊM: Thư viện kết nối Database
 
 const app = express();
 const server = http.createServer(app);
@@ -12,13 +12,14 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- 1. CẤU HÌNH DATABASE (MONGODB ATLAS) ---
+// --- CẤU HÌNH DATABASE (THÊM MỚI) ---
 const mongoURI = "mongodb+srv://admin:VCC12345@cluster0.yaz7fki.mongodb.net/TramGiamSatIOT?retryWrites=true&w=majority";
 
 mongoose.connect(mongoURI)
-    .then(() => console.log("🚀 [DATABASE] Kết nối thành công với MongoDB Atlas!"))
-    .catch(err => console.error("❌ [DATABASE] Lỗi kết nối:", err));
+    .then(() => console.log("🚀 Đã kết nối thành công với MongoDB Atlas!"))
+    .catch(err => console.error("❌ Lỗi kết nối Database:", err));
 
+// Định nghĩa cấu trúc lưu trữ (Schema)
 const sensorSchema = new mongoose.Schema({
     nhiet_do: Number,
     do_am: Number,
@@ -29,60 +30,88 @@ const sensorSchema = new mongoose.Schema({
 
 const SensorLog = mongoose.model('SensorLog', sensorSchema);
 
-// --- 2. CẤU HÌNH EMAIL ---
-let config = { tempThreshold: 35.0, gasThreshold: 2000 };
+// --- GIỮ NGUYÊN CẤU HÌNH CONFIG ---
+let config = {
+    tempThreshold: 35.0,
+    gasThreshold: 2000
+};
+
+// --- GIỮ NGUYÊN CẤU HÌNH GỬI EMAIL ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false, 
-    auth: { 
-        user: 'vccong2710@gmail.com', 
-        pass: 'qqbnkijfqgtqktvn' // Đảm bảo đây là mật khẩu ứng dụng 16 ký tự
+    secure: false,
+    auth: {
+        user: 'vccong2710@gmail.com',
+        pass: 'qqbnkijfqgtqktvn' 
     },
-    tls: { rejectUnauthorized: false }
+    tls: {
+        rejectUnauthorized: false 
+    }
 });
 
 let lastEmailSentTime = 0;
+const EMAIL_INTERVAL = 300000; // 5 phút gửi 1 lần
 
 function sendAlertEmail(data) {
-    // Đã bỏ chặn EMAIL_INTERVAL để phục vụ việc Demo gửi mail liên tục
+    const now = Date.now();
+    if (now - lastEmailSentTime < EMAIL_INTERVAL) {
+        console.log("⏳ Vừa gửi email cách đây chưa lâu, vui lòng đợi thêm...");
+        return;
+    }
+
     const mailOptions = {
         from: '"Hệ Thống IoT Cảnh Báo" <vccong2710@gmail.com>', 
         to: 'vccong2710@gmail.com', 
         subject: '⚠️ CẢNH BÁO: Phát hiện chỉ số vượt ngưỡng!',
-        html: `<h2>⚠️ CẢNH BÁO NGUY HIỂM</h2>
-               <p>Hệ thống ghi nhận thông số bất thường:</p>
-               <ul>
-                   <li>Nhiệt độ: <b>${data.nhiet_do}°C</b></li>
-                   <li>Nồng độ Gas: <b>${data.khi_gas}</b></li>
-               </ul>`
+        html: `
+            <div style="font-family: Arial, sans-serif; border: 2px solid #ff0000; padding: 20px; border-radius: 10px;">
+                <h2 style="color: #ff0000; text-align: center;">⚠️ CẢNH BÁO NGUY HIỂM</h2>
+                <p>Hệ thống giám sát ghi nhận thông số bất thường:</p>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background-color: #f8d7da;">
+                        <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">Thông số</th>
+                        <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">Giá trị</th>
+                        <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">Ngưỡng</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">Nhiệt độ</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6; color: red; font-weight: bold;">${data.nhiet_do} °C</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">${config.tempThreshold} °C</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">Nồng độ Gas</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6; color: red; font-weight: bold;">${data.khi_gas}</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">${config.gasThreshold}</td>
+                    </tr>
+                </table>
+                <p style="margin-top: 20px;">Kiểm tra chi tiết tại: <a href="https://ketnoicloud.onrender.com">Bảng điều khiển</a></p>
+            </div>
+        `
     };
 
-    console.log("📨 [EMAIL] Đang tiến hành gửi thư cảnh báo...");
-
+    console.log("📨 Đang tiến hành gửi email...");
     transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
-            console.log("❌ [EMAIL] Lỗi gửi thư thực tế: " + error.message);
+            console.log("❌ Lỗi gửi Email:", error.message);
         } else {
-            console.log("✅ [EMAIL] Thư đã được gửi thành công!");
-            lastEmailSentTime = Date.now();
+            console.log("✅ Email đã gửi thành công!");
+            lastEmailSentTime = now;
         }
     });
 }
 
-// --- 3. CÁC ĐƯỜNG DẪN (ROUTES) ---
-
-// Trang chủ
+// --- CÁC ROUTE ---
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Trang giao diện lịch sử
+// ROUTE MỚI: Trang xem lịch sử
 app.get('/view-history', (req, res) => {
     res.sendFile(path.join(__dirname, 'history.html'));
 });
 
-// Lấy dữ liệu JSON lịch sử
+// ROUTE MỚI: API lấy dữ liệu từ Database
 app.get('/history', async (req, res) => {
     try {
         const logs = await SensorLog.find().sort({ thoi_gian: -1 }).limit(100);
@@ -92,16 +121,15 @@ app.get('/history', async (req, res) => {
     }
 });
 
-// ESP32 lấy ngưỡng cài đặt
-app.get('/get-config', (req, res) => { res.json(config); });
+app.get('/get-config', (req, res) => {
+    res.json(config);
+});
 
-// Nhận dữ liệu từ ESP32
-app.post('/update', async (req, res) => {
+app.post('/update', async (req, res) => { // Thêm async để xử lý lưu DB
     const data = req.body;
+    console.log(`\n--- DỮ LIỆU: Temp: ${data.nhiet_do} | Gas: ${data.khi_gas} | Cảnh báo: ${data.canh_bao}`);
     
-    // Log dữ liệu ra màn hình Render để theo dõi
-    console.log(`📥 [DATA] Temp: ${data.nhiet_do} | Gas: ${data.khi_gas} | Cảnh báo: ${data.canh_bao}`);
-
+    // --- THỰC HIỆN LƯU DATABASE ---
     try {
         const isAlertStatus = (data.canh_bao === true || data.canh_bao === "true");
         const newLog = new SensorLog({
@@ -111,35 +139,30 @@ app.post('/update', async (req, res) => {
             canh_bao: isAlertStatus
         });
         await newLog.save();
-        console.log("💾 [DB] Đã lưu bản ghi thành công.");
+        console.log("💾 Đã lưu dữ liệu vào Database!");
+    } catch (dbErr) {
+        console.error("❌ Lỗi lưu DB:", dbErr.message);
+    }
 
-        if (isAlertStatus) {
-            sendAlertEmail(data);
-        }
-    } catch (dbErr) { 
-        console.error("❌ [DB ERROR]:", dbErr.message); 
+    // --- GIỮ NGUYÊN LOGIC GỬI EMAIL ---
+    if (data.canh_bao === true || data.canh_bao === "true") {
+        sendAlertEmail(data);
     }
 
     io.emit('sensor_data', data); 
     res.status(200).send("OK");
 });
 
-// --- 4. SOCKET.IO ---
 io.on('connection', (socket) => {
-    console.log("🌐 [SOCKET] Một thiết bị vừa kết nối.");
     socket.emit('current_config', config);
     socket.on('set_threshold', (newConfig) => {
         config.tempThreshold = parseFloat(newConfig.temp);
         config.gasThreshold = parseInt(newConfig.gas);
-        console.log(`⚙️ [CONFIG] Cập nhật ngưỡng: Temp > ${config.tempThreshold}, Gas > ${config.gasThreshold}`);
         io.emit('current_config', config);
     });
 });
 
-// --- 5. KHỞI CHẠY ---
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🚀 ============================================`);
     console.log(`🚀 SERVER ĐANG CHẠY TẠI PORT: ${PORT}`);
-    console.log(`🚀 ============================================\n`);
 });
