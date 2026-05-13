@@ -14,166 +14,267 @@
             --danger: #ef4444;
             --warning: #f59e0b;
             --success: #10b981;
+            --dark: #1e293b;
         }
 
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); margin: 0; padding: 20px; color: #333; }
-        h1 { color: #1e293b; margin-bottom: 30px; }
+        h1 { color: var(--dark); margin-bottom: 10px; }
         
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
         
-        .card { background: var(--card-bg); padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.3s ease; text-align: center; }
-        .card h3 { margin-top: 0; color: #64748b; font-size: 1rem; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.3s ease; text-align: center; position: relative; }
+        .card h3 { margin-top: 0; color: #64748b; font-size: 1rem; text-transform: uppercase; }
         .value { font-size: 2.5rem; font-weight: bold; margin: 10px 0; }
         
-        /* Cải tiến trực quan cho Gas */
-        .gas-meter { height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; margin: 10px 0; }
+        /* Gas Meter */
+        .gas-meter { height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; margin: 15px 0; }
         #gasProgress { height: 100%; width: 0%; background: var(--success); transition: width 0.5s ease; }
         
-        /* Đồ thị */
+        /* Controls & Settings */
+        .container-flex { display: flex; flex-wrap: wrap; gap: 20px; max-width: 1200px; margin: 20px auto; }
+        .panel { background: white; padding: 20px; border-radius: 15px; flex: 1; min-width: 300px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .settings-dark { background: var(--dark); color: white; }
+
+        .control-group { display: flex; justify-content: space-around; margin-top: 15px; }
+        .btn-toggle { padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; width: 45%; }
+        .btn-on { background: var(--success); color: white; }
+        .btn-off { background: #64748b; color: white; opacity: 0.6; }
+
+        /* MQ135 Reference Table */
+        .info-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        .info-table th, .info-table td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
+        .level-safe { color: var(--success); font-weight: bold; }
+        .level-warn { color: var(--warning); font-weight: bold; }
+        .level-danger { color: var(--danger); font-weight: bold; }
+
+        /* Chart */
         .chart-container { background: white; margin: 20px auto; padding: 20px; border-radius: 15px; max-width: 1200px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
 
-        /* Cài đặt */
-        .settings { background: #1e293b; color: white; padding: 25px; border-radius: 15px; max-width: 1200px; margin: 20px auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; align-items: center; }
-        .settings input { padding: 10px; border-radius: 8px; border: none; width: 100px; font-size: 1rem; }
-        .settings button { padding: 10px 25px; background: var(--primary-color); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
-        .settings button:hover { background: #1d4ed8; }
+        /* History Log Table */
+        .log-container { max-height: 300px; overflow-y: auto; }
+        .log-table { width: 100%; border-collapse: collapse; }
+        .log-table th { position: sticky; top: 0; background: #f8fafc; }
+        .log-table td, .log-table th { padding: 10px; text-align: center; border-bottom: 1px solid #f1f5f9; }
 
-        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; margin-top: 5px; }
+        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
         .alert-active { animation: pulse 1s infinite; background: var(--danger) !important; color: white; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        
+        .input-dark { padding: 8px; border-radius: 5px; border: 1px solid #475569; background: #334155; color: white; width: 80px; }
+        .btn-save { padding: 10px 20px; background: var(--primary-color); color: white; border: none; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <center>
-        <h1>TRẠM GIÁM SÁT MÔI TRƯỜNG TOÀN DIỆN</h1>
+        <h1>TRẠM GIÁM SÁT MÔI TRƯỜNG</h1>
+        <p style="color: #64748b; margin-top: -10px;">Dữ liệu thời gian thực & Điều khiển thiết bị</p>
     </center>
 
     <div class="dashboard">
-        <!-- Card Nhiệt Độ -->
         <div class="card" id="tempCard">
             <h3>Nhiệt Độ</h3>
             <div class="value"><span id="temp">--</span>°C</div>
-            <div id="tempStatus" class="status-badge">Ổn định</div>
+            <div id="tempStatus" class="status-badge" style="background: #d1fae5; color: #065f46;">Ổn định</div>
         </div>
 
-        <!-- Card Độ Ẩm -->
         <div class="card">
             <h3>Độ Ẩm</h3>
             <div class="value"><span id="humi">--</span>%</div>
             <div class="status-badge" style="background: #dbeafe; color: #1e40af;">Bình thường</div>
         </div>
 
-        <!-- Card Khí Gas Trực Quan -->
         <div class="card" id="gasCard">
-            <h3>Khí Gas (Nồng độ)</h3>
+            <h3>Khí Gas (MQ135)</h3>
             <div class="value" id="gas">--</div>
             <div class="gas-meter"><div id="gasProgress"></div></div>
-            <div id="gasStatus" class="status-badge">Sạch</div>
+            <div id="gasStatus" class="status-badge">Đang quét...</div>
         </div>
     </div>
 
-    <!-- Biểu đồ thời gian thực -->
+    <div class="container-flex">
+        <!-- Bảng tra cứu chỉ số -->
+        <div class="panel">
+            <h3>📖 Chú giải chỉ số MQ135</h3>
+            <table class="info-table">
+                <tr><th>Chỉ số</th><th>Trạng thái</th><th>Môi trường</th></tr>
+                <tr class="level-safe"><td>< 800</td><td>Sạch</td><td>An toàn / Trong lành</td></tr>
+                <tr class="level-warn"><td>800 - 2000</td><td>Cảnh báo</td><td>Ô nhiễm nhẹ / Khói</td></tr>
+                <tr class="level-danger"><td>> 2000</td><td>Nguy hiểm</td><td>Rò rỉ Gas / Cháy</td></tr>
+            </table>
+        </div>
+
+        <!-- Điều khiển & Cài đặt -->
+        <div class="panel settings-dark">
+            <h3>⚙️ Điều khiển & Ngưỡng</h3>
+            <div style="margin-bottom: 15px;">
+                T: <input type="number" id="setTemp" class="input-dark" step="0.1"> 
+                G: <input type="number" id="setGas" class="input-dark">
+                <button class="btn-save" onclick="saveSettings()">LƯU</button>
+            </div>
+            <hr style="opacity: 0.2;">
+            <div class="control-group">
+                <button id="btnBuzzer" class="btn-toggle btn-on" onclick="toggleDevice('buzzer')">CÒI: BẬT</button>
+                <button id="btnLed" class="btn-toggle btn-on" onclick="toggleDevice('led')">LED: BẬT</button>
+            </div>
+            <p id="configDisplay" style="font-size: 0.8rem; margin-top: 15px; opacity: 0.7; text-align: center;">Đang đồng bộ...</p>
+        </div>
+    </div>
+
     <div class="chart-container">
+        <h3>📈 Biểu đồ xu hướng</h3>
         <canvas id="iotChart"></canvas>
     </div>
 
-    <!-- Phần cài đặt -->
-    <div class="settings">
-        <div>
-            Ngưỡng Nhiệt độ: <input type="number" id="setTemp" step="0.1">
+    <!-- Xem Log lịch sử ngay trên giao diện -->
+    <div class="panel" style="max-width: 1200px; margin: 20px auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>📋 Nhật ký dữ liệu (Logs)</h3>
+            <button onclick="fetchHistory()" style="padding: 5px 15px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc;">Làm mới</button>
         </div>
-        <div>
-            Ngưỡng Khí Gas: <input type="number" id="setGas">
+        <div class="log-container">
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th>Thời gian</th>
+                        <th>Nhiệt độ</th>
+                        <th>Độ ẩm</th>
+                        <th>Khí Gas</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody id="logBody">
+                    <tr><td colspan="5">Đang tải lịch sử...</td></tr>
+                </tbody>
+            </table>
         </div>
-        <button onclick="saveSettings()">LƯU CÀI ĐẶT</button>
-        <div id="configDisplay" style="font-size: 0.9rem; opacity: 0.8;"> Đang tải cấu hình...</div>
     </div>
 
     <script>
         const socket = io();
-        
-        // Cấu hình Biểu đồ Chart.js
+        let currentConfig = { buzzerEnabled: true, ledEnabled: true };
+
+        // Chart Config
         const ctx = document.getElementById('iotChart').getContext('2d');
         const iotChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: [], // Thời gian
+                labels: [],
                 datasets: [
                     { label: 'Nhiệt độ (°C)', data: [], borderColor: '#ef4444', tension: 0.3, yAxisID: 'y' },
                     { label: 'Khí Gas', data: [], borderColor: '#f59e0b', tension: 0.3, yAxisID: 'y1' }
                 ]
             },
-            options: {
-                responsive: true,
-                scales: {
-                    y: { type: 'linear', display: true, position: 'left', title: {display: true, text: 'Nhiệt độ'} },
-                    y1: { type: 'linear', display: true, position: 'right', grid: {drawOnChartArea: false}, title: {display: true, text: 'Chỉ số Gas'} }
-                }
-            }
+            options: { responsive: true, scales: { 
+                y: { type: 'linear', position: 'left', title: {display: true, text: 'Nhiệt độ'} },
+                y1: { type: 'linear', position: 'right', grid: {drawOnChartArea: false}, title: {display: true, text: 'Gas'} }
+            }}
         });
 
-        // Nhận dữ liệu từ Server
+        // Socket: Nhận dữ liệu sensor
         socket.on('sensor_data', (data) => {
-            // Cập nhật số liệu
             document.getElementById('temp').innerText = data.nhiet_do;
             document.getElementById('humi').innerText = data.do_am;
             document.getElementById('gas').innerText = data.khi_gas;
 
-            // Xử lý trực quan cho Gas (Giả định max là 4095)
-            const gasPercent = (data.khi_gas / 4095) * 100;
+            // Gas Progress & Status
+            const gasPercent = Math.min((data.khi_gas / 4095) * 100, 100);
             const gasBar = document.getElementById('gasProgress');
+            const gasStatus = document.getElementById('gasStatus');
             gasBar.style.width = gasPercent + "%";
 
-            // Đổi màu dựa trên mức độ nguy hiểm
-            const gasStatus = document.getElementById('gasStatus');
-            const gasCard = document.getElementById('gasCard');
             if(data.khi_gas > 2000) {
                 gasBar.style.backgroundColor = "#ef4444";
                 gasStatus.innerText = "NGUY HIỂM";
                 gasStatus.className = "status-badge alert-active";
-                gasCard.style.border = "2px solid #ef4444";
             } else if(data.khi_gas > 800) {
                 gasBar.style.backgroundColor = "#f59e0b";
                 gasStatus.innerText = "CẢNH BÁO";
                 gasStatus.className = "status-badge";
                 gasStatus.style.background = "#fef3c7";
-                gasCard.style.border = "none";
             } else {
                 gasBar.style.backgroundColor = "#10b981";
                 gasStatus.innerText = "SẠCH";
                 gasStatus.className = "status-badge";
                 gasStatus.style.background = "#d1fae5";
-                gasCard.style.border = "none";
             }
 
-            // Cập nhật biểu đồ (Giới hạn 20 điểm dữ liệu)
+            // Update Chart
             const now = new Date().toLocaleTimeString();
             iotChart.data.labels.push(now);
             iotChart.data.datasets[0].data.push(data.nhiet_do);
             iotChart.data.datasets[1].data.push(data.khi_gas);
-            
             if(iotChart.data.labels.length > 20) {
                 iotChart.data.labels.shift();
-                iotChart.data.datasets[0].data.shift();
-                iotChart.data.datasets[1].data.shift();
+                iotChart.data.datasets.forEach(d => d.data.shift());
             }
             iotChart.update();
         });
 
-        // Nhận cấu hình từ Server
+        // Socket: Nhận cấu hình
         socket.on('current_config', (config) => {
+            currentConfig = config;
             document.getElementById('setTemp').value = config.tempThreshold;
             document.getElementById('setGas').value = config.gasThreshold;
-            document.getElementById('configDisplay').innerText = `Ngưỡng hiện tại: Nhiệt độ > ${config.tempThreshold}°C | Gas > ${config.gasThreshold}`;
+            document.getElementById('configDisplay').innerText = `Hiện tại: T > ${config.tempThreshold}°C | G > ${config.gasThreshold}`;
+            
+            // Cập nhật trạng thái nút bấm
+            updateButton('btnBuzzer', config.buzzerEnabled, 'CÒI');
+            updateButton('btnLed', config.ledEnabled, 'LED');
         });
 
-        function saveSettings() {
-            const t = document.getElementById('setTemp').value;
-            const g = document.getElementById('setGas').value;
-            socket.emit('set_threshold', { temp: t, gas: g });
-            alert("Đã gửi yêu cầu lưu cài đặt!");
+        function updateButton(id, state, text) {
+            const btn = document.getElementById(id);
+            btn.innerText = `${text}: ${state ? 'BẬT' : 'TẮT'}`;
+            btn.className = `btn-toggle ${state ? 'btn-on' : 'btn-off'}`;
         }
+
+        function toggleDevice(type) {
+            if(type === 'buzzer') currentConfig.buzzerEnabled = !currentConfig.buzzerEnabled;
+            if(type === 'led') currentConfig.ledEnabled = !currentConfig.ledEnabled;
+            
+            socket.emit('update_settings', {
+                temp: document.getElementById('setTemp').value,
+                gas: document.getElementById('setGas').value,
+                buzzer: currentConfig.buzzerEnabled,
+                led: currentConfig.ledEnabled
+            });
+        }
+
+        function saveSettings() {
+            socket.emit('update_settings', {
+                temp: document.getElementById('setTemp').value,
+                gas: document.getElementById('setGas').value,
+                buzzer: currentConfig.buzzerEnabled,
+                led: currentConfig.ledEnabled
+            });
+            alert("Đã lưu cấu hình!");
+        }
+
+        // Fetch History Log
+        async function fetchHistory() {
+            try {
+                const res = await fetch('/history');
+                const data = await res.json();
+                const tbody = document.getElementById('logBody');
+                tbody.innerHTML = data.map(log => `
+                    <tr>
+                        <td>${new Date(log.thoi_gian).toLocaleString()}</td>
+                        <td>${log.nhiet_do}°C</td>
+                        <td>${log.do_am}%</td>
+                        <td>${log.khi_gas}</td>
+                        <td><span class="status-badge ${log.canh_bao ? 'alert-active' : ''}" 
+                             style="background:${log.canh_bao ? '#ef4444' : '#d1fae5'}">
+                             ${log.canh_bao ? 'Báo động' : 'An toàn'}</span></td>
+                    </tr>
+                `).join('');
+            } catch (e) { console.error("Lỗi tải lịch sử"); }
+        }
+
+        // Tự động tải lịch sử khi mở web
+        fetchHistory();
+        // Tải lại lịch sử mỗi 30 giây
+        setInterval(fetchHistory, 30000);
     </script>
 </body>
 </html>
