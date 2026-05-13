@@ -2,63 +2,212 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Lịch Sử Hệ Thống IoT</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Sử Hệ Thống IoT Pro</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f7f6; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-        th { background-color: #4CAF50; color: white; }
-        tr:nth-child(even) { background-color: #f2f2f2; }
-        .alert { background-color: #ffcccc !important; color: red; font-weight: bold; }
-        .back-btn { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #2196F3; font-weight: bold; }
+        :root {
+            --primary: #2ecc71;
+            --danger: #e74c3c;
+            --dark: #2c3e50;
+            --bg: #f8f9fa;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            padding: 20px; 
+            color: var(--dark);
+        }
+
+        .container { 
+            max-width: 1100px; 
+            margin: auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #f1f1f1;
+            padding-bottom: 15px;
+        }
+
+        h2 { margin: 0; color: var(--dark); font-size: 1.5rem; }
+
+        .back-btn { 
+            text-decoration: none; 
+            color: #666; 
+            font-weight: 600; 
+            display: flex;
+            align-items: center;
+            transition: 0.3s;
+        }
+        .back-btn:hover { color: var(--primary); }
+
+        /* Hiệu ứng nhấp nháy cho trạng thái Live */
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--primary);
+            font-weight: bold;
+        }
+        .dot {
+            height: 8px;
+            width: 8px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid #eee;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            background: white;
+        }
+
+        th { 
+            background-color: #f8fafc; 
+            color: #64748b; 
+            padding: 15px; 
+            text-align: center; 
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td { 
+            padding: 14px; 
+            text-align: center; 
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.95rem;
+        }
+
+        tr:hover { background-color: #fcfcfc; }
+
+        /* Badge trạng thái */
+        .badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .badge-safe { background: #d1fae5; color: #065f46; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+
+        /* Cảnh báo dòng nguy hiểm */
+        .row-alert {
+            background-color: #fff5f5 !important;
+            transition: 0.3s;
+        }
+        .row-alert td { color: var(--danger); font-weight: 500; }
+
+        /* Thanh cuộn đẹp */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #999; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="/" class="back-btn">← Quay lại Bảng điều khiển</a>
-        <h2>Lịch Sử Dữ Liệu Cảm Biến</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Thời Gian (Việt Nam)</th>
-                    <th>Nhiệt Độ (°C)</th>
-                    <th>Độ Ẩm (%)</th>
-                    <th>Khí Gas</th>
-                    <th>Trạng Thái</th>
-                </tr>
-            </thead>
-            <tbody id="logTable">
-                <!-- Dữ liệu sẽ đổ vào đây -->
-            </tbody>
-        </table>
+        <div class="header-section">
+            <a href="/" class="back-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Quay lại Dashboard
+            </a>
+            <div class="live-indicator">
+                <span class="dot"></span> TỰ ĐỘNG CẬP NHẬT
+            </div>
+        </div>
+
+        <h2>📊 Lịch Sử Dữ Liệu Cảm Biến</h2>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Thời Gian</th>
+                        <th>Nhiệt Độ</th>
+                        <th>Độ Ẩm</th>
+                        <th>Khí Gas</th>
+                        <th>Trạng Thái</th>
+                    </tr>
+                </thead>
+                <tbody id="logTable">
+                    <!-- Dữ liệu sẽ tự động đổ vào đây -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
+        // Hàm lấy dữ liệu từ server
         async function loadHistory() {
-            const response = await fetch('/history');
-            const data = await response.json();
-            const tableBody = document.getElementById('logTable');
+            try {
+                const response = await fetch('/history');
+                const data = await response.json();
+                const tableBody = document.getElementById('logTable');
+                
+                // Xóa nội dung cũ trước khi cập nhật mới
+                tableBody.innerHTML = '';
 
-            data.forEach(log => {
-                const row = document.createElement('tr');
-                if (log.canh_bao) row.classList.add('alert');
+                data.forEach(log => {
+                    const row = document.createElement('tr');
+                    if (log.canh_bao) row.classList.add('row-alert');
 
-                // Chuyển đổi giờ sang giờ Việt Nam
-                const time = new Date(log.thoi_gian).toLocaleString('vi-VN');
+                    const time = new Date(log.thoi_gian).toLocaleString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
 
-                row.innerHTML = `
-                    <td>${time}</td>
-                    <td>${log.nhiet_do}</td>
-                    <td>${log.do_am}</td>
-                    <td>${log.khi_gas}</td>
-                    <td>${log.canh_bao ? 'NGUY HIỂM' : 'An toàn'}</td>
-                `;
-                tableBody.appendChild(row);
-            });
+                    row.innerHTML = `
+                        <td><strong>${time}</strong></td>
+                        <td>${log.nhiet_do}°C</td>
+                        <td>${log.do_am}%</td>
+                        <td><span style="color: ${log.khi_gas > 1000 ? 'red' : 'inherit'}">${log.khi_gas}</span></td>
+                        <td>
+                            <span class="badge ${log.canh_bao ? 'badge-danger' : 'badge-safe'}">
+                                ${log.canh_bao ? '🔴 NGUY HIỂM' : '✅ An toàn'}
+                            </span>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Lỗi khi cập nhật dữ liệu:", error);
+            }
         }
+
+        // Chạy lần đầu khi trang load
         loadHistory();
+
+        // Thiết lập tự động cập nhật sau mỗi 5 giây (không cần F5)
+        setInterval(loadHistory, 5000);
     </script>
 </body>
 </html>
