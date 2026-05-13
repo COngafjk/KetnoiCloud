@@ -3,7 +3,6 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const nodemailer = require('nodemailer'); 
-const mongoose = require('mongoose'); // THÊM: Thư viện kết nối Database
 
 const app = express();
 const server = http.createServer(app);
@@ -12,40 +11,22 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- CẤU HÌNH DATABASE (THÊM MỚI) ---
-const mongoURI = "mongodb+srv://admin:VCC12345@cluster0.yaz7fki.mongodb.net/TramGiamSatIOT?retryWrites=true&w=majority";
-
-mongoose.connect(mongoURI)
-    .then(() => console.log("🚀 Đã kết nối thành công với MongoDB Atlas!"))
-    .catch(err => console.error("❌ Lỗi kết nối Database:", err));
-
-// Định nghĩa cấu trúc lưu trữ (Schema)
-const sensorSchema = new mongoose.Schema({
-    nhiet_do: Number,
-    do_am: Number,
-    khi_gas: Number,
-    canh_bao: Boolean,
-    thoi_gian: { type: Date, default: Date.now }
-});
-
-const SensorLog = mongoose.model('SensorLog', sensorSchema);
-
-// --- GIỮ NGUYÊN CẤU HÌNH CONFIG ---
 let config = {
     tempThreshold: 35.0,
     gasThreshold: 2000
 };
 
-// --- GIỮ NGUYÊN CẤU HÌNH GỬI EMAIL ---
+// --- CẤU HÌNH GỬI EMAIL (ĐÃ SỬA ĐỂ CHẠY TRÊN RENDER) ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false,
+    secure: false, // Sử dụng STARTTLS cho cổng 587
     auth: {
         user: 'vccong2710@gmail.com',
         pass: 'qqbnkijfqgtqktvn' 
     },
     tls: {
+        // Hỗ trợ kết nối từ môi trường Cloud (không bị lỗi chứng chỉ)
         rejectUnauthorized: false 
     }
 });
@@ -106,45 +87,15 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ROUTE MỚI: Trang xem lịch sử
-app.get('/view-history', (req, res) => {
-    res.sendFile(path.join(__dirname, 'history.html'));
-});
-
-// ROUTE MỚI: API lấy dữ liệu từ Database
-app.get('/history', async (req, res) => {
-    try {
-        const logs = await SensorLog.find().sort({ thoi_gian: -1 }).limit(100);
-        res.json(logs);
-    } catch (err) {
-        res.status(500).json({ error: "Lỗi lấy dữ liệu" });
-    }
-});
-
 app.get('/get-config', (req, res) => {
     res.json(config);
 });
 
-app.post('/update', async (req, res) => { // Thêm async để xử lý lưu DB
+app.post('/update', (req, res) => {
     const data = req.body;
     console.log(`\n--- DỮ LIỆU: Temp: ${data.nhiet_do} | Gas: ${data.khi_gas} | Cảnh báo: ${data.canh_bao}`);
     
-    // --- THỰC HIỆN LƯU DATABASE ---
-    try {
-        const isAlertStatus = (data.canh_bao === true || data.canh_bao === "true");
-        const newLog = new SensorLog({
-            nhiet_do: data.nhiet_do,
-            do_am: data.do_am,
-            khi_gas: data.khi_gas,
-            canh_bao: isAlertStatus
-        });
-        await newLog.save();
-        console.log("💾 Đã lưu dữ liệu vào Database!");
-    } catch (dbErr) {
-        console.error("❌ Lỗi lưu DB:", dbErr.message);
-    }
-
-    // --- GIỮ NGUYÊN LOGIC GỬI EMAIL ---
+    // Kiểm tra đúng kiểu dữ liệu (boolean hoặc string "true")
     if (data.canh_bao === true || data.canh_bao === "true") {
         sendAlertEmail(data);
     }
