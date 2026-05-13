@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const mongoose = require('mongoose'); 
+const axios = require('axios'); // THÊM MỚI: Thư viện để gửi request tới Telegram
 
 const app = express();
 const server = http.createServer(app);
@@ -11,6 +12,25 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname))); // Cho phép truy cập các file tĩnh (html, css, js)
+
+// --- THÊM MỚI: CẤU HÌNH TELEGRAM ---
+// Hãy thay Token và Chat ID thật của bạn vào đây
+const TELEGRAM_TOKEN = '8660866539:AAGc-VrsDHMp0VoPseCxSlWbavDbNPMpzHo'; 
+const TELEGRAM_CHAT_ID = '8660866539'; 
+
+async function sendTelegramAlert(message) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+    try {
+        await axios.post(url, {
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message,
+            parse_mode: 'HTML'
+        });
+        console.log("✅ [TELEGRAM] Alert sent successfully!");
+    } catch (error) {
+        console.error("❌ [TELEGRAM ERROR]:", error.message);
+    }
+}
 
 // --- 1. CẤU HÌNH DATABASE ---
 const mongoURI = "mongodb+srv://admin:VCC12345@cluster0.yaz7fki.mongodb.net/TramGiamSatIOT?retryWrites=true&w=majority";
@@ -73,6 +93,16 @@ app.post('/update', async (req, res) => {
         });
         
         await newLog.save();
+
+        // --- THÊM MỚI: TỰ ĐỘNG GỬI TELEGRAM KHI CÓ CẢNH BÁO ---
+        if (isAlertStatus) {
+            const msg = `🚨 <b>CẢNH BÁO HỆ THỐNG IOT</b> 🚨\n\n` +
+                        `🌡 Nhiệt độ: <b>${data.nhiet_do}°C</b>\n` +
+                        `💧 Độ ẩm: <b>${data.do_am}%</b>\n` +
+                        `🔥 Khí Gas: <b>${data.khi_gas}</b>\n` +
+                        `⏰ Thời gian: ${new Date().toLocaleString('vi-VN')}`;
+            sendTelegramAlert(msg);
+        }
         
         // Gửi dữ liệu real-time tới giao diện Web
         io.emit('sensor_data', {
