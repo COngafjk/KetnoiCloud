@@ -15,22 +15,29 @@
             --warning: #f59e0b;
             --success: #10b981;
             --dark: #1e293b;
+            --secondary: #64748b;
         }
 
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); margin: 0; padding: 20px; color: #333; }
-        h1 { color: var(--dark); margin-bottom: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); margin: 0; padding: 0; color: #333; }
         
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        /* Navigation Bar */
+        .navbar { background: var(--dark); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .navbar h2 { margin: 0; font-size: 1.2rem; letter-spacing: 1px; }
+        .nav-btn { background: var(--primary-color); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; text-decoration: none; font-size: 0.9rem; }
+        .nav-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
+
+        .content-wrapper { padding: 20px; }
+        h1 { color: var(--dark); margin-bottom: 10px; text-align: center; }
+        
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 20px auto; }
         
         .card { background: var(--card-bg); padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.3s ease; text-align: center; position: relative; }
         .card h3 { margin-top: 0; color: #64748b; font-size: 1rem; text-transform: uppercase; }
         .value { font-size: 2.5rem; font-weight: bold; margin: 10px 0; }
         
-        /* Gas Meter */
         .gas-meter { height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; margin: 15px 0; }
         #gasProgress { height: 100%; width: 0%; background: var(--success); transition: width 0.5s ease; }
         
-        /* Controls & Settings */
         .container-flex { display: flex; flex-wrap: wrap; gap: 20px; max-width: 1200px; margin: 20px auto; }
         .panel { background: white; padding: 20px; border-radius: 15px; flex: 1; min-width: 300px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .settings-dark { background: var(--dark); color: white; }
@@ -38,22 +45,19 @@
         .control-group { display: flex; justify-content: space-around; margin-top: 15px; }
         .btn-toggle { padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; width: 45%; }
         .btn-on { background: var(--success); color: white; }
-        .btn-off { background: #64748b; color: white; opacity: 0.6; }
+        .btn-off { background: var(--secondary); color: white; opacity: 0.6; }
 
-        /* MQ135 Reference Table */
         .info-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
         .info-table th, .info-table td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
         .level-safe { color: var(--success); font-weight: bold; }
         .level-warn { color: var(--warning); font-weight: bold; }
         .level-danger { color: var(--danger); font-weight: bold; }
 
-        /* Chart */
         .chart-container { background: white; margin: 20px auto; padding: 20px; border-radius: 15px; max-width: 1200px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
 
-        /* History Log Table */
         .log-container { max-height: 300px; overflow-y: auto; }
         .log-table { width: 100%; border-collapse: collapse; }
-        .log-table th { position: sticky; top: 0; background: #f8fafc; }
+        .log-table th { position: sticky; top: 0; background: #f8fafc; z-index: 10; }
         .log-table td, .log-table th { padding: 10px; text-align: center; border-bottom: 1px solid #f1f5f9; }
 
         .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
@@ -66,87 +70,90 @@
 </head>
 <body>
 
-    <center>
+    <!-- Thanh điều hướng mới -->
+    <nav class="navbar">
+        <h2>IOT MONITOR PRO</h2>
+        <button class="nav-btn" onclick="window.open('/view-history', '_blank')">📊 XEM NHẬT KÝ CHI TIẾT</button>
+    </nav>
+
+    <div class="content-wrapper">
         <h1>TRẠM GIÁM SÁT MÔI TRƯỜNG</h1>
-        <p style="color: #64748b; margin-top: -10px;">Dữ liệu thời gian thực & Điều khiển thiết bị</p>
-    </center>
+        <p style="text-align: center; color: #64748b; margin-top: -10px;">Dữ liệu thời gian thực & Điều khiển thiết bị từ xa</p>
 
-    <div class="dashboard">
-        <div class="card" id="tempCard">
-            <h3>Nhiệt Độ</h3>
-            <div class="value"><span id="temp">--</span>°C</div>
-            <div id="tempStatus" class="status-badge" style="background: #d1fae5; color: #065f46;">Ổn định</div>
-        </div>
-
-        <div class="card">
-            <h3>Độ Ẩm</h3>
-            <div class="value"><span id="humi">--</span>%</div>
-            <div class="status-badge" style="background: #dbeafe; color: #1e40af;">Bình thường</div>
-        </div>
-
-        <div class="card" id="gasCard">
-            <h3>Khí Gas (MQ135)</h3>
-            <div class="value" id="gas">--</div>
-            <div class="gas-meter"><div id="gasProgress"></div></div>
-            <div id="gasStatus" class="status-badge">Đang quét...</div>
-        </div>
-    </div>
-
-    <div class="container-flex">
-        <!-- Bảng tra cứu chỉ số -->
-        <div class="panel">
-            <h3>📖 Chú giải chỉ số MQ135</h3>
-            <table class="info-table">
-                <tr><th>Chỉ số</th><th>Trạng thái</th><th>Môi trường</th></tr>
-                <tr class="level-safe"><td>< 800</td><td>Sạch</td><td>An toàn / Trong lành</td></tr>
-                <tr class="level-warn"><td>800 - 2000</td><td>Cảnh báo</td><td>Ô nhiễm nhẹ / Khói</td></tr>
-                <tr class="level-danger"><td>> 2000</td><td>Nguy hiểm</td><td>Rò rỉ Gas / Cháy</td></tr>
-            </table>
-        </div>
-
-        <!-- Điều khiển & Cài đặt -->
-        <div class="panel settings-dark">
-            <h3>⚙️ Điều khiển & Ngưỡng</h3>
-            <div style="margin-bottom: 15px;">
-                T: <input type="number" id="setTemp" class="input-dark" step="0.1"> 
-                G: <input type="number" id="setGas" class="input-dark">
-                <button class="btn-save" onclick="saveSettings()">LƯU</button>
+        <div class="dashboard">
+            <div class="card" id="tempCard">
+                <h3>Nhiệt Độ</h3>
+                <div class="value"><span id="temp">--</span>°C</div>
+                <div id="tempStatus" class="status-badge" style="background: #d1fae5; color: #065f46;">Ổn định</div>
             </div>
-            <hr style="opacity: 0.2;">
-            <div class="control-group">
-                <button id="btnBuzzer" class="btn-toggle btn-on" onclick="toggleDevice('buzzer')">CÒI: BẬT</button>
-                <button id="btnLed" class="btn-toggle btn-on" onclick="toggleDevice('led')">LED: BẬT</button>
+
+            <div class="card">
+                <h3>Độ Ẩm</h3>
+                <div class="value"><span id="humi">--</span>%</div>
+                <div class="status-badge" style="background: #dbeafe; color: #1e40af;">Bình thường</div>
             </div>
-            <p id="configDisplay" style="font-size: 0.8rem; margin-top: 15px; opacity: 0.7; text-align: center;">Đang đồng bộ...</p>
-        </div>
-    </div>
 
-    <div class="chart-container">
-        <h3>📈 Biểu đồ xu hướng</h3>
-        <canvas id="iotChart"></canvas>
-    </div>
-
-    <!-- Xem Log lịch sử ngay trên giao diện -->
-    <div class="panel" style="max-width: 1200px; margin: 20px auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3>📋 Nhật ký dữ liệu (Logs)</h3>
-            <button onclick="fetchHistory()" style="padding: 5px 15px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc;">Làm mới</button>
+            <div class="card" id="gasCard">
+                <h3>Khí Gas (MQ135)</h3>
+                <div class="value" id="gas">--</div>
+                <div class="gas-meter"><div id="gasProgress"></div></div>
+                <div id="gasStatus" class="status-badge">Đang quét...</div>
+            </div>
         </div>
-        <div class="log-container">
-            <table class="log-table">
-                <thead>
-                    <tr>
-                        <th>Thời gian</th>
-                        <th>Nhiệt độ</th>
-                        <th>Độ ẩm</th>
-                        <th>Khí Gas</th>
-                        <th>Trạng thái</th>
-                    </tr>
-                </thead>
-                <tbody id="logBody">
-                    <tr><td colspan="5">Đang tải lịch sử...</td></tr>
-                </tbody>
-            </table>
+
+        <div class="container-flex">
+            <div class="panel">
+                <h3>📖 Chú giải chỉ số MQ135</h3>
+                <table class="info-table">
+                    <tr><th>Chỉ số</th><th>Trạng thái</th><th>Môi trường</th></tr>
+                    <tr class="level-safe"><td>< 800</td><td>Sạch</td><td>An toàn / Trong lành</td></tr>
+                    <tr class="level-warn"><td>800 - 2000</td><td>Cảnh báo</td><td>Ô nhiễm nhẹ / Khói</td></tr>
+                    <tr class="level-danger"><td>> 2000</td><td>Nguy hiểm</td><td>Rò rỉ Gas / Cháy</td></tr>
+                </table>
+            </div>
+
+            <div class="panel settings-dark">
+                <h3>⚙️ Điều khiển & Ngưỡng</h3>
+                <div style="margin-bottom: 15px;">
+                    T: <input type="number" id="setTemp" class="input-dark" step="0.1"> 
+                    G: <input type="number" id="setGas" class="input-dark">
+                    <button class="btn-save" onclick="saveSettings()">LƯU</button>
+                </div>
+                <hr style="opacity: 0.2;">
+                <div class="control-group">
+                    <button id="btnBuzzer" class="btn-toggle btn-on" onclick="toggleDevice('buzzer')">CÒI: BẬT</button>
+                    <button id="btnLed" class="btn-toggle btn-on" onclick="toggleDevice('led')">LED: BẬT</button>
+                </div>
+                <p id="configDisplay" style="font-size: 0.8rem; margin-top: 15px; opacity: 0.7; text-align: center;">Đang đồng bộ...</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>📈 Biểu đồ xu hướng</h3>
+            <canvas id="iotChart"></canvas>
+        </div>
+
+        <div class="panel" style="max-width: 1200px; margin: 20px auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>📋 Nhật ký nhanh (Logs)</h3>
+                <button onclick="fetchHistory()" style="padding: 5px 15px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc;">Làm mới</button>
+            </div>
+            <div class="log-container">
+                <table class="log-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Nhiệt độ</th>
+                            <th>Độ ẩm</th>
+                            <th>Khí Gas</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logBody">
+                        <tr><td colspan="5">Đang tải lịch sử...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -154,7 +161,6 @@
         const socket = io();
         let currentConfig = { buzzerEnabled: true, ledEnabled: true };
 
-        // Chart Config
         const ctx = document.getElementById('iotChart').getContext('2d');
         const iotChart = new Chart(ctx, {
             type: 'line',
@@ -171,13 +177,11 @@
             }}
         });
 
-        // Socket: Nhận dữ liệu sensor
         socket.on('sensor_data', (data) => {
             document.getElementById('temp').innerText = data.nhiet_do;
             document.getElementById('humi').innerText = data.do_am;
             document.getElementById('gas').innerText = data.khi_gas;
 
-            // Gas Progress & Status
             const gasPercent = Math.min((data.khi_gas / 4095) * 100, 100);
             const gasBar = document.getElementById('gasProgress');
             const gasStatus = document.getElementById('gasStatus');
@@ -199,7 +203,6 @@
                 gasStatus.style.background = "#d1fae5";
             }
 
-            // Update Chart
             const now = new Date().toLocaleTimeString();
             iotChart.data.labels.push(now);
             iotChart.data.datasets[0].data.push(data.nhiet_do);
@@ -211,14 +214,12 @@
             iotChart.update();
         });
 
-        // Socket: Nhận cấu hình
         socket.on('current_config', (config) => {
             currentConfig = config;
             document.getElementById('setTemp').value = config.tempThreshold;
             document.getElementById('setGas').value = config.gasThreshold;
             document.getElementById('configDisplay').innerText = `Hiện tại: T > ${config.tempThreshold}°C | G > ${config.gasThreshold}`;
             
-            // Cập nhật trạng thái nút bấm
             updateButton('btnBuzzer', config.buzzerEnabled, 'CÒI');
             updateButton('btnLed', config.ledEnabled, 'LED');
         });
@@ -251,7 +252,6 @@
             alert("Đã lưu cấu hình!");
         }
 
-        // Fetch History Log
         async function fetchHistory() {
             try {
                 const res = await fetch('/history');
@@ -271,9 +271,7 @@
             } catch (e) { console.error("Lỗi tải lịch sử"); }
         }
 
-        // Tự động tải lịch sử khi mở web
         fetchHistory();
-        // Tải lại lịch sử mỗi 30 giây
         setInterval(fetchHistory, 30000);
     </script>
 </body>
